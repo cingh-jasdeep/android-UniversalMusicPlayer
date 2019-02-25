@@ -26,26 +26,18 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import androidx.core.app.NotificationManagerCompat
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaBrowserCompat.MediaItem
-import androidx.media.MediaBrowserServiceCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.extensions.flag
-import com.example.android.uamp.media.library.BrowseTree
-import com.example.android.uamp.media.library.JsonSource
-import com.example.android.uamp.media.library.MusicSource
-import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
-import com.example.android.uamp.media.library.UAMP_EMPTY_ROOT
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.ExoPlayerFactory
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.Timeline
+import com.example.android.uamp.media.library.*
+import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
@@ -78,8 +70,8 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
      * See [MusicService.onLoadChildren] to see where it's accessed (and first
      * constructed).
      */
-    private val browseTree: BrowseTree by lazy {
-        BrowseTree(mediaSource)
+    private val browseTreeRoot: BrowseTreeRoot by lazy {
+        BrowseTreeRoot(mediaSource)
     }
 
     private var isForegroundService = false
@@ -209,7 +201,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
     /**
      * Returns (via the [result] parameter) a list of [MediaItem]s that are child
-     * items of the provided [parentMediaId]. See [BrowseTree] for more details on
+     * items of the provided [parentMediaId]. See [BrowseTreeRoot] for more details on
      * how this is build/more details about the relationships.
      */
     override fun onLoadChildren(
@@ -219,7 +211,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         // If the media source is ready, the results will be set synchronously here.
         val resultsSent = mediaSource.whenReady { successfullyInitialized ->
             if (successfullyInitialized) {
-                val children = browseTree[parentMediaId]?.map { item ->
+                val children = browseTreeRoot[parentMediaId]?.map { item ->
                     MediaItem(item.description, item.flag)
                 }
                 result.sendResult(children)
