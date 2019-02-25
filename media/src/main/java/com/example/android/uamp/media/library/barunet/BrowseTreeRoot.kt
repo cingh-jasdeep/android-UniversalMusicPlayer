@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.media.library
+package com.example.android.uamp.media.library.barunet
 
-import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
-import com.example.android.uamp.media.extensions.*
+import com.example.android.uamp.media.library.MusicSource
+import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
 
 /**
  * Represents a tree of media that's used by [MusicService.onLoadChildren].

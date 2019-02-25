@@ -36,7 +36,11 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.extensions.flag
-import com.example.android.uamp.media.library.*
+import com.example.android.uamp.media.library.MusicSource
+import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
+import com.example.android.uamp.media.library.UAMP_EMPTY_ROOT
+import com.example.android.uamp.media.library.barunet.BrowseTreeRoot
+import com.example.android.uamp.media.library.barunet.JsonRadioSource
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -78,6 +82,9 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
     private val remoteJsonSource: Uri =
             Uri.parse("https://storage.googleapis.com/uamp/catalog.json")
+
+    private val remoteJsonRadioSource: Uri =
+            Uri.parse("https://raw.githubusercontent.com/cingh-jasdeep/barunet-radio-sources/master/catalog.json")
 
     private val uAmpAudioAttributes = AudioAttributes.Builder()
             .setContentType(C.CONTENT_TYPE_MUSIC)
@@ -128,7 +135,8 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         becomingNoisyReceiver =
                 BecomingNoisyReceiver(context = this, sessionToken = mediaSession.sessionToken)
 
-        mediaSource = JsonSource(context = this, source = remoteJsonSource)
+//        mediaSource = JsonSource(context = this, source = remoteJsonSource)
+        mediaSource = JsonRadioSource(context = this, source = remoteJsonRadioSource)
 
         // ExoPlayer will manage the MediaSession for us.
         mediaSessionConnector = MediaSessionConnector(mediaSession).also {
@@ -149,23 +157,23 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         packageValidator = PackageValidator(this, R.xml.allowed_media_browser_callers)
     }
 
-    /**
-     * This is the code that causes UAMP to stop playing when swiping it away from recents.
-     * The choice to do this is app specific. Some apps stop playback, while others allow playback
-     * to continue and allow uses to stop it with the notification.
-     */
-    override fun onTaskRemoved(rootIntent: Intent) {
-        super.onTaskRemoved(rootIntent)
-
-        /**
-         * By stopping playback, the player will transition to [Player.STATE_IDLE]. This will
-         * cause a state change in the MediaSession, and (most importantly) call
-         * [MediaControllerCallback.onPlaybackStateChanged]. Because the playback state will
-         * be reported as [PlaybackStateCompat.STATE_NONE], the service will first remove
-         * itself as a foreground service, and will then call [stopSelf].
-         */
-        exoPlayer.stop(true)
-    }
+//    /**
+//     * This is the code that causes UAMP to stop playing when swiping it away from recents.
+//     * The choice to do this is app specific. Some apps stop playback, while others allow playback
+//     * to continue and allow uses to stop it with the notification.
+//     */
+//    override fun onTaskRemoved(rootIntent: Intent) {
+//        super.onTaskRemoved(rootIntent)
+//
+//        /**
+//         * By stopping playback, the player will transition to [Player.STATE_IDLE]. This will
+//         * cause a state change in the MediaSession, and (most importantly) call
+//         * [MediaControllerCallback.onPlaybackStateChanged]. Because the playback state will
+//         * be reported as [PlaybackStateCompat.STATE_NONE], the service will first remove
+//         * itself as a foreground service, and will then call [stopSelf].
+//         */
+//        exoPlayer.stop(true)
+//    }
 
     override fun onDestroy() {
         mediaSession.run {
