@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.media
+package com.example.android.uamp.media.playback.sample
 
 import android.net.Uri
 import android.os.Bundle
@@ -77,16 +77,16 @@ class UampPlaybackPreparer(
 
                 // TODO: Notify caller of the error.
             } else {
-//                val metadataList = buildPlaylist(itemToPlay)
-                val mediaSource = itemToPlay.toMediaSource(dataSourceFactory)
+                val metadataList = buildPlaylist(itemToPlay)
+                val mediaSource = metadataList.toMediaSource(dataSourceFactory)
 
                 // Since the playlist was probably based on some ordering (such as tracks
                 // on an album), find which window index to play first so that the song the
                 // user actually wants to hear plays first.
-//                val initialWindowIndex = metadataList.indexOf(itemToPlay)
+                val initialWindowIndex = metadataList.indexOf(itemToPlay)
 
                 exoPlayer.prepare(mediaSource)
-                exoPlayer.seekTo(0)
+                exoPlayer.seekTo(initialWindowIndex, 0)
             }
         }
     }

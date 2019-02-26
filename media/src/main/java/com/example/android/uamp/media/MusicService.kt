@@ -21,6 +21,7 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.media.AudioManager
 import android.net.Uri
@@ -37,12 +38,16 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.extensions.flag
 import com.example.android.uamp.media.library.MusicSource
-import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
-import com.example.android.uamp.media.library.UAMP_EMPTY_ROOT
 import com.example.android.uamp.media.library.barunet.BrowseTreeRoot
 import com.example.android.uamp.media.library.barunet.JsonRadioSource
+import com.example.android.uamp.media.library.sample_source.UAMP_BROWSABLE_ROOT
+import com.example.android.uamp.media.library.sample_source.UAMP_EMPTY_ROOT
+import com.example.android.uamp.media.notifications.barunet.RadioNotificationBuilder
+import com.example.android.uamp.media.notifications.sample.NOW_PLAYING_NOTIFICATION
+import com.example.android.uamp.media.playback.barunet.RadioPlaybackPreparer
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
+import com.google.android.exoplayer2.ext.mediasession.DefaultPlaybackController
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
@@ -64,7 +69,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
     private lateinit var mediaController: MediaControllerCompat
     private lateinit var becomingNoisyReceiver: BecomingNoisyReceiver
     private lateinit var notificationManager: NotificationManagerCompat
-    private lateinit var notificationBuilder: NotificationBuilder
+    private lateinit var notificationBuilder: RadioNotificationBuilder
     private lateinit var mediaSource: MusicSource
     private lateinit var mediaSessionConnector: MediaSessionConnector
     private lateinit var packageValidator: PackageValidator
@@ -103,7 +108,11 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
         // Build a PendingIntent that can be used to launch the UI.
         val sessionIntent = packageManager?.getLaunchIntentForPackage(packageName)
-        val sessionActivityPendingIntent = PendingIntent.getActivity(this, 0, sessionIntent, 0)
+        sessionIntent?.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or FLAG_ACTIVITY_NEW_TASK
+        val sessionActivityPendingIntent = PendingIntent.getActivity(this, 0, sessionIntent,
+                0)
+
+        //todo-later check for multiple tasks when launching
 
         // Create a new MediaSession.
         mediaSession = MediaSessionCompat(this, "MusicService")
@@ -129,7 +138,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
             it.registerCallback(MediaControllerCallback())
         }
 
-        notificationBuilder = NotificationBuilder(this)
+        notificationBuilder = RadioNotificationBuilder(this)
         notificationManager = NotificationManagerCompat.from(this)
 
         becomingNoisyReceiver =
@@ -139,16 +148,19 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         mediaSource = JsonRadioSource(context = this, source = remoteJsonRadioSource)
 
         // ExoPlayer will manage the MediaSession for us.
-        mediaSessionConnector = MediaSessionConnector(mediaSession).also {
+        mediaSessionConnector = MediaSessionConnector(
+                mediaSession,
+                RadioPlaybackController()).also {
             // Produces DataSource instances through which media data is loaded.
             val dataSourceFactory = DefaultDataSourceFactory(
                     this, Util.getUserAgent(this, UAMP_USER_AGENT), null)
 
             // Create the PlaybackPreparer of the media session connector.
-            val playbackPreparer = UampPlaybackPreparer(
+            val playbackPreparer = RadioPlaybackPreparer(
                     mediaSource,
                     exoPlayer,
                     dataSourceFactory)
+
 
             it.setPlayer(exoPlayer, playbackPreparer)
             it.setQueueNavigator(UampQueueNavigator(mediaSession))
@@ -156,24 +168,6 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
         packageValidator = PackageValidator(this, R.xml.allowed_media_browser_callers)
     }
-
-//    /**
-//     * This is the code that causes UAMP to stop playing when swiping it away from recents.
-//     * The choice to do this is app specific. Some apps stop playback, while others allow playback
-//     * to continue and allow uses to stop it with the notification.
-//     */
-//    override fun onTaskRemoved(rootIntent: Intent) {
-//        super.onTaskRemoved(rootIntent)
-//
-//        /**
-//         * By stopping playback, the player will transition to [Player.STATE_IDLE]. This will
-//         * cause a state change in the MediaSession, and (most importantly) call
-//         * [MediaControllerCallback.onPlaybackStateChanged]. Because the playback state will
-//         * be reported as [PlaybackStateCompat.STATE_NONE], the service will first remove
-//         * itself as a foreground service, and will then call [stopSelf].
-//         */
-//        exoPlayer.stop(true)
-//    }
 
     override fun onDestroy() {
         mediaSession.run {
@@ -278,12 +272,10 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
         private fun updateNotification(state: PlaybackStateCompat) {
             val updatedState = state.state
-            if (mediaController.metadata == null) {
-                return
-            }
 
             // Skip building a notification when state is "none".
-            val notification = if (updatedState != PlaybackStateCompat.STATE_NONE) {
+            val notification = if (updatedState != PlaybackStateCompat.STATE_NONE
+                    && mediaController.metadata != null) {
                 notificationBuilder.buildNotification(mediaSession.sessionToken)
             } else {
                 null
@@ -292,7 +284,13 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
             when (updatedState) {
                 PlaybackStateCompat.STATE_BUFFERING,
                 PlaybackStateCompat.STATE_PLAYING -> {
+
                     becomingNoisyReceiver.register()
+
+                    //no metadata available yet, so waiting for it
+                    if (mediaController.metadata == null) {
+                        return
+                    }
 
                     /**
                      * This may look strange, but the documentation for [Service.startForeground]
@@ -306,6 +304,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
                     } else if (notification != null) {
                         notificationManager.notify(NOW_PLAYING_NOTIFICATION, notification)
                     }
+                    mediaSession.setQueue(null)
                 }
                 else -> {
                     becomingNoisyReceiver.unregister()
@@ -316,6 +315,7 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
                         // If playback has ended, also stop the service.
                         if (updatedState == PlaybackStateCompat.STATE_NONE) {
+                            mediaSession.setQueue(null)
                             stopSelf()
                         }
 
@@ -342,6 +342,28 @@ private class UampQueueNavigator(
     override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat =
             player.currentTimeline
                     .getWindow(windowIndex, window, true).tag as MediaDescriptionCompat
+
+    override fun getSupportedQueueNavigatorActions(player: Player?): Long {
+        if (player == null) {
+            return 0
+        }
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || player.isPlayingAd) {
+            return 0
+        }
+        var actions: Long = 0
+        if (timeline.windowCount > 1) {
+            actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
+        }
+        return actions
+    }
+}
+
+class RadioPlaybackController
+    : DefaultPlaybackController() {
+    override fun getSupportedPlaybackActions(player: Player?): Long =
+            PlaybackStateCompat.ACTION_PLAY or
+                    PlaybackStateCompat.ACTION_STOP
 }
 
 /**
@@ -373,7 +395,7 @@ private class BecomingNoisyReceiver(private val context: Context,
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-            controller.transportControls.pause()
+            controller.transportControls.stop()
         }
     }
 }

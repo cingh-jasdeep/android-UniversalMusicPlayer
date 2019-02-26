@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.media.library
+package com.example.android.uamp.media.library.sample_source
 
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaMetadataCompat
@@ -27,6 +27,7 @@ import com.example.android.uamp.media.extensions.flag
 import com.example.android.uamp.media.extensions.id
 import com.example.android.uamp.media.extensions.title
 import com.example.android.uamp.media.extensions.urlEncoded
+import com.example.android.uamp.media.library.MusicSource
 
 /**
  * Represents a tree of media that's used by [MusicService.onLoadChildren].

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.media.library
+package com.example.android.uamp.media.library.sample_source
 
 import android.content.Context
 import android.net.Uri
@@ -44,6 +44,9 @@ import com.example.android.uamp.media.extensions.mediaUri
 import com.example.android.uamp.media.extensions.title
 import com.example.android.uamp.media.extensions.trackCount
 import com.example.android.uamp.media.extensions.trackNumber
+import com.example.android.uamp.media.library.AbstractMusicSource
+import com.example.android.uamp.media.library.STATE_INITIALIZED
+import com.example.android.uamp.media.library.STATE_INITIALIZING
 import com.google.gson.Gson
 import java.io.BufferedReader
 import java.io.IOException

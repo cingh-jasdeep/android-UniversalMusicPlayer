@@ -54,27 +54,27 @@ private class UpdateRadioCatalogTask(val glide: RequestManager,
         val mediaItems = ArrayList<MediaMetadataCompat>()
 
         params.forEach { catalogUri ->
-            val musicCat = tryDownloadJson(catalogUri)
+            val radioCat = tryDownloadJson(catalogUri)
 
             // Get the base URI to fix up relative references later.
             val baseUri = catalogUri.toString().removeSuffix(catalogUri.lastPathSegment)
 
-            mediaItems += musicCat.radio.map { song ->
+            mediaItems += radioCat.radio.map { radioStation ->
                 // The JSON may have paths that are relative to the source of the JSON
                 // itself. We need to fix them up here to turn them into absolute paths.
-                if (!song.image.startsWith(catalogUri.scheme)) {
-                    song.image = baseUri + song.image
+                if (!radioStation.image.startsWith(catalogUri.scheme)) {
+                    radioStation.image = baseUri + radioStation.image
                 }
 
                 // Block on downloading artwork.
                 val art = glide.applyDefaultRequestOptions(glideOptions)
                         .asBitmap()
-                        .load(song.image)
+                        .load(radioStation.image)
                         .submit(NOTIFICATION_LARGE_ICON_SIZE, NOTIFICATION_LARGE_ICON_SIZE)
                         .get()
 
                 MediaMetadataCompat.Builder()
-                        .from(song)
+                        .from(radioStation)
                         .apply {
                             albumArt = art
                         }
@@ -115,6 +115,7 @@ fun MediaMetadataCompat.Builder.from(jsonRadioStation: JsonRadioStation): MediaM
     id = jsonRadioStation.id
     title = jsonRadioStation.title
     genre = jsonRadioStation.genre
+    album = jsonRadioStation.album
     mediaUri = jsonRadioStation.source
     albumArtUri = jsonRadioStation.image
     flag = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
@@ -143,16 +144,17 @@ class JsonRadioCatalog {
  * An individual piece of radio included in our JSON Radio catalog.
  * The format from the server is as specified:
  * ```
-        {"radio": [
-        {
-        "id": "radio_01",
-        "title": // Title of the radio station
-        "genre": // Primary genre of the radio station
-        "source": // Path to the radio station stream
-        "image": // Path to the art for the radio station, which may be relative
-        "site": // Source of the radio station, if applicable
-        }
-        ]}
+{"radio": [
+{
+"id": "radio_01",
+"title": // Title of the radio station
+"genre": // Primary genre of the radio station
+"album":// Album for radio station
+"source": // Path to the radio station stream
+"image": // Path to the art for the radio station, which may be relative
+"site": // Source of the radio station, if applicable
+}
+]}
  * ```
  *
  * `image` can be provided in either relative or
@@ -169,6 +171,7 @@ class JsonRadioStation {
     var id: String = ""
     var title: String = ""
     var genre: String = ""
+    var album: String = ""
     var source: String = ""
     var image: String = ""
     var site: String = ""
