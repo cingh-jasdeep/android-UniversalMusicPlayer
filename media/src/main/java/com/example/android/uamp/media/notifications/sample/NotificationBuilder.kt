@@ -50,7 +50,7 @@ class NotificationBuilder(private val context: Context) {
 
     private val skipToPreviousAction = NotificationCompat.Action(
             R.drawable.exo_controls_previous,
-            context.getString(R.string.notification_skip_to_previous),
+            context.getString(R.string.notification_previous),
             MediaButtonReceiver.buildMediaButtonPendingIntent(context, ACTION_SKIP_TO_PREVIOUS))
     private val playAction = NotificationCompat.Action(
             R.drawable.exo_controls_play,
@@ -62,7 +62,7 @@ class NotificationBuilder(private val context: Context) {
             MediaButtonReceiver.buildMediaButtonPendingIntent(context, ACTION_PAUSE))
     private val skipToNextAction = NotificationCompat.Action(
             R.drawable.exo_controls_next,
-            context.getString(R.string.notification_skip_to_next),
+            context.getString(R.string.notification_next),
             MediaButtonReceiver.buildMediaButtonPendingIntent(context, ACTION_SKIP_TO_NEXT))
     private val stopPendingIntent =
             MediaButtonReceiver.buildMediaButtonPendingIntent(context, ACTION_STOP)

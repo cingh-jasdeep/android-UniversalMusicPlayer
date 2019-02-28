@@ -67,7 +67,7 @@ class RadioPlaybackPreparer(
                 // user actually wants to hear plays first.
                 val initialWindowIndex = metadataList.indexOf(itemToPlay)
 
-                exoPlayer.prepare(mediaSource)
+                exoPlayer.prepare(mediaSource, false, false)
                 exoPlayer.seekTo(initialWindowIndex, 0)
             }
         }
@@ -83,14 +83,15 @@ class RadioPlaybackPreparer(
      * - Play electronic music on UAMP
      * - Play music on UAMP
      *
-     * For details on how search is handled, see [AbstractMusicSource.search].
+     * For details on how search is handled, see
+     * [com.example.android.uamp.media.library.AbstractMusicSource.search].
      */
     override fun onPrepareFromSearch(query: String?, extras: Bundle?) {
         musicSource.whenReady {
             val metadataList = musicSource.search(query ?: "", extras ?: Bundle.EMPTY)
             if (metadataList.isNotEmpty()) {
                 val mediaSource = metadataList.toMediaSource(dataSourceFactory)
-                exoPlayer.prepare(mediaSource)
+                exoPlayer.prepare(mediaSource, false, false)
             }
         }
     }

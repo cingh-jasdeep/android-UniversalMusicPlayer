@@ -169,6 +169,24 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         packageValidator = PackageValidator(this, R.xml.allowed_media_browser_callers)
     }
 
+//    /**
+//     * This is the code that causes UAMP to stop playing when swiping it away from recents.
+//     * The choice to do this is app specific. Some apps stop playback, while others allow playback
+//     * to continue and allow uses to stop it with the notification.
+//     */
+//    override fun onTaskRemoved(rootIntent: Intent) {
+//        super.onTaskRemoved(rootIntent)
+//
+//        /**
+//         * By stopping playback, the player will transition to [Player.STATE_IDLE]. This will
+//         * cause a state change in the MediaSession, and (most importantly) call
+//         * [MediaControllerCallback.onPlaybackStateChanged]. Because the playback state will
+//         * be reported as [PlaybackStateCompat.STATE_NONE], the service will first remove
+//         * itself as a foreground service, and will then call [stopSelf].
+//         */
+//        exoPlayer.stop(true)
+//    }
+
     override fun onDestroy() {
         mediaSession.run {
             isActive = false
@@ -304,7 +322,6 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
                     } else if (notification != null) {
                         notificationManager.notify(NOW_PLAYING_NOTIFICATION, notification)
                     }
-                    mediaSession.setQueue(null)
                 }
                 else -> {
                     becomingNoisyReceiver.unregister()
@@ -315,7 +332,6 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
                         // If playback has ended, also stop the service.
                         if (updatedState == PlaybackStateCompat.STATE_NONE) {
-                            mediaSession.setQueue(null)
                             stopSelf()
                         }
 
@@ -355,15 +371,56 @@ private class UampQueueNavigator(
         if (timeline.windowCount > 1) {
             actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
         }
+        if (player.hasPrevious()) {
+            actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+        }
+        if (player.hasNext()) {
+            actions = actions or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+        }
         return actions
+    }
+
+    override fun onSkipToPrevious(player: Player) {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || player.isPlayingAd) {
+            return
+        }
+        val previousWindowIndex = player.previousWindowIndex
+        if (previousWindowIndex != C.INDEX_UNSET) {
+            player.seekTo(previousWindowIndex, C.TIME_UNSET)
+        }
+    }
+
+    override fun onSkipToQueueItem(player: Player, id: Long) {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || player.isPlayingAd) {
+            return
+        }
+        val windowIndex = id.toInt()
+        if (0 <= windowIndex && windowIndex < timeline.windowCount) {
+            player.seekTo(windowIndex, C.TIME_UNSET)
+        }
+    }
+
+    override fun onSkipToNext(player: Player) {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || player.isPlayingAd) {
+            return
+        }
+        val nextWindowIndex = player.nextWindowIndex
+        if (nextWindowIndex != C.INDEX_UNSET) {
+            player.seekTo(nextWindowIndex, C.TIME_UNSET)
+        }
     }
 }
 
 class RadioPlaybackController
     : DefaultPlaybackController() {
-    override fun getSupportedPlaybackActions(player: Player?): Long =
-            PlaybackStateCompat.ACTION_PLAY or
-                    PlaybackStateCompat.ACTION_STOP
+    override fun onPlay(player: Player?) {
+        //seek to live position on play
+        player?.seekToDefaultPosition()
+        super.onPlay(player)
+    }
 }
 
 /**

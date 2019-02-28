@@ -28,11 +28,28 @@ class RadioNotificationBuilder(private val context: Context) {
     private val playAction = NotificationCompat.Action(
             R.drawable.exo_controls_play,
             context.getString(R.string.notification_play),
-            MediaButtonReceiver.buildMediaButtonPendingIntent(context, PlaybackStateCompat.ACTION_PLAY))
+            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                    PlaybackStateCompat.ACTION_PLAY))
+    private val pauseAction = NotificationCompat.Action(
+            R.drawable.exo_controls_pause,
+            context.getString(R.string.notification_pause),
+            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                    PlaybackStateCompat.ACTION_PAUSE))
+    private val prevAction = NotificationCompat.Action(
+            R.drawable.exo_controls_previous,
+            context.getString(R.string.notification_previous),
+            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
+    private val nextAction = NotificationCompat.Action(
+            R.drawable.exo_controls_next,
+            context.getString(R.string.notification_next),
+            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
     private val stopPendingIntent =
-            MediaButtonReceiver.buildMediaButtonPendingIntent(context, PlaybackStateCompat.ACTION_STOP)
+            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                    PlaybackStateCompat.ACTION_STOP)
     private val stopAction = NotificationCompat.Action(
-            R.drawable.exo_icon_stop,
+            R.drawable.exo_notification_stop,
             context.getString(R.string.notification_stop),
             stopPendingIntent)
 
@@ -48,17 +65,37 @@ class RadioNotificationBuilder(private val context: Context) {
         val builder = NotificationCompat.Builder(context, NOW_PLAYING_CHANNEL)
 
         // Only add actions for play, stop, based on what's enabled.
-        val playPauseIndex = 0
-        if (playbackState.isPlaying) {
-            builder.addAction(stopAction)
+        var currActionIndex = 0
+        val compactViewActionIndexes: MutableList<Int> = mutableListOf()
+
+        if (playbackState.isSkipToPreviousEnabled) {
+            builder.addAction(prevAction)
+            compactViewActionIndexes.add(currActionIndex)
+            ++currActionIndex
+        }
+        if (playbackState.isPlaying) { // only one of the two will be added to compact view
+            builder.addAction(pauseAction)
+            compactViewActionIndexes.add(currActionIndex)
+            ++currActionIndex
         } else if (playbackState.isPlayEnabled) {
             builder.addAction(playAction)
+            compactViewActionIndexes.add(currActionIndex)
+            ++currActionIndex
+        }
+        if (playbackState.isSkipToNextEnabled) {
+            builder.addAction(nextAction)
+            compactViewActionIndexes.add(currActionIndex)//max 3 actions
+            ++currActionIndex
+        }
+        if (playbackState.isPlaying) { // only one of the two will be added to compact view
+            builder.addAction(stopAction)
+            ++currActionIndex
         }
 
         val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
                 .setCancelButtonIntent(stopPendingIntent)
                 .setMediaSession(sessionToken)
-                .setShowActionsInCompactView(playPauseIndex)
+                .setShowActionsInCompactView(*compactViewActionIndexes.toIntArray())
                 .setShowCancelButton(true)
 
         return builder.setContentIntent(controller.sessionActivity)
