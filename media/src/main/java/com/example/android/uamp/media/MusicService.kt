@@ -25,8 +25,10 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.media.AudioManager
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaDescriptionCompat
@@ -75,6 +77,14 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
     private lateinit var packageValidator: PackageValidator
 
     /**
+     * wake locks for background music
+     * see "backgrounded" [https://google.github.io/ExoPlayer/faqs.html]
+     * src [https://github.com/y20k/transistor/blob/master/app/src/main/java/org/y20k/transistor/PlayerService.java]
+     */
+    private lateinit var mWifiLock: WifiManager.WifiLock
+    private lateinit var mWakeLock: PowerManager.WakeLock
+
+    /**
      * This must be `by lazy` because the source won't initially be ready.
      * See [MusicService.onLoadChildren] to see where it's accessed (and first
      * constructed).
@@ -112,8 +122,6 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
         val sessionActivityPendingIntent = PendingIntent.getActivity(this, 0, sessionIntent,
                 0)
 
-        //todo-later check for multiple tasks when launching
-
         // Create a new MediaSession.
         mediaSession = MediaSessionCompat(this, "MusicService")
                 .apply {
@@ -143,6 +151,14 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
 
         becomingNoisyReceiver =
                 BecomingNoisyReceiver(context = this, sessionToken = mediaSession.sessionToken)
+
+        // create Wifi and wake locks
+        mWifiLock = (this.getSystemService(Context.WIFI_SERVICE) as WifiManager)
+                .createWifiLock(WifiManager.WIFI_MODE_FULL, "uamp:wifi_lock")
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                "uamp:wake_lock")
+
 
 //        mediaSource = JsonSource(context = this, source = remoteJsonSource)
         mediaSource = JsonRadioSource(context = this, source = remoteJsonRadioSource)
@@ -319,6 +335,15 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
                         startService(Intent(applicationContext, this@MusicService.javaClass))
                         startForeground(NOW_PLAYING_NOTIFICATION, notification)
                         isForegroundService = true
+
+                        // acquire Wifi and wake locks
+                        if (!mWifiLock.isHeld) {
+                            mWifiLock.acquire()
+                        }
+                        if (!mWakeLock.isHeld) {
+                            mWakeLock.acquire() // needs android.permission.WAKE_LOCK
+                        }
+
                     } else if (notification != null) {
                         notificationManager.notify(NOW_PLAYING_NOTIFICATION, notification)
                     }
@@ -329,6 +354,14 @@ class MusicService : androidx.media.MediaBrowserServiceCompat() {
                     if (isForegroundService) {
                         stopForeground(false)
                         isForegroundService = false
+
+                        // release Wifi and wake locks
+                        if (mWifiLock.isHeld) {
+                            mWifiLock.release()
+                        }
+                        if (mWakeLock.isHeld) {
+                            mWakeLock.release()
+                        }
 
                         // If playback has ended, also stop the service.
                         if (updatedState == PlaybackStateCompat.STATE_NONE) {
