@@ -26,6 +26,10 @@
     <string name="notification_pause">Pause</string>
     <string name="notification_stop">Stop</string>
 
+    <!-- Notification text -->
+    <string name="notification_buffering">Loading…</string>
+
+
     <!-- Error messages -->
     <string name="error_media_not_found">Could not locate requested media.</string>
 

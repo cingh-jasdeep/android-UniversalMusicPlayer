@@ -12,10 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.media.session.MediaButtonReceiver
 import com.example.android.uamp.media.R
-import com.example.android.uamp.media.extensions.isPlayEnabled
-import com.example.android.uamp.media.extensions.isPlaying
-import com.example.android.uamp.media.extensions.isSkipToNextEnabled
-import com.example.android.uamp.media.extensions.isSkipToPreviousEnabled
+import com.example.android.uamp.media.extensions.*
 import com.example.android.uamp.media.notifications.sample.NOW_PLAYING_CHANNEL
 
 /**
@@ -98,8 +95,14 @@ class RadioNotificationBuilder(private val context: Context) {
                 .setShowActionsInCompactView(*compactViewActionIndexes.toIntArray())
                 .setShowCancelButton(true)
 
+        if (playbackState.isBuffering) {
+            builder.setContentText(context.getString(R.string.notification_buffering))
+        } else {
+            builder.setContentText(description.subtitle)
+        }
+
+
         return builder.setContentIntent(controller.sessionActivity)
-                .setContentText(description.subtitle)
                 .setContentTitle(description.title)
                 .setDeleteIntent(stopPendingIntent)
                 .setLargeIcon(description.iconBitmap)
